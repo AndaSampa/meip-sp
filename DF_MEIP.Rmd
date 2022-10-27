@@ -1,0 +1,110 @@
+---
+title: "Organização do dataframe"
+author: "André Igarashi"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(tidyr)
+```
+
+
+```{r}
+##Densidade viária por hierarquia
+##Base de dados do Geosampa, pré-processados no QGIS para dividir as vias por zona OD, e calcular a extensão de cada segmento
+
+df_class_via <- read_xlsx("classificacao_viaria.xlsx")
+df_ag_class_via <- df_class_via %>% group_by(od_id, cvc_classe) %>% summarize(extensao=sum(cvcc_ext_od))
+
+df_class_via <- pivot_wider(df_ag_class_via,names_from=cvc_classe,values_from=extensao)
+colnames(df_class_via) <- c("od_id", "ext_arterial", "ext_coletora", "ext_local", "ext_pedestres", "ext_vtr", "ext_rodovia")
+
+df_iptu <- read_xlsx("base_iptu.xlsx")
+df_iptu2 <- df_iptu %>% select(area,od_id)
+df_iptu2 <- df_iptu2 %>% mutate(od_id = as.character(df_iptu2$od_id))
+
+df_dens_via <- left_join(df_class_via,df_iptu2, by="od_id")
+df_dens_via
+
+res_dens_via <- df_dens_via %>% 
+  mutate(dv_arterial=ext_arterial/area) %>%
+  mutate(dv_coletora=ext_coletora/area) %>%
+  mutate(dv_local=ext_local/area) %>%
+  mutate(dv_pedestres=ext_pedestres/area) %>%
+  mutate(dv_vtr=ext_vtr/area) %>%
+  mutate(dv_rodovia=ext_rodovia/area)
+res_dens_via <- res_dens_via %>% select(1,9:14)
+res_dens_via
+
+
+```
+
+```{r}
+##Percentual de área destinada a uso residencial e comercial e CA médio
+
+df_iptu3 <- df_iptu %>%
+  mutate(uso_comercial=rowSums(df_iptu[5:16])) %>%
+  mutate(uso_residencial=rowSums(df_iptu[24:35]))
+df_iptu3 <- df_iptu3 %>% select("CA médio", od_id, uso_comercial, uso_residencial, area) %>% 
+  mutate(od_id = as.character(df_iptu3$od_id))
+colnames(df_iptu3) <- c("ca_medio", "od_id", "uso_comercial", "uso_residencial", "area")
+
+df_iptu3 <- df_iptu3 %>% 
+  mutate(perc_comercial=uso_comercial/area*100) %>%
+  mutate(perc_residencial=uso_residencial/area*100)
+
+res_uso_ca <- df_iptu3 %>% select ("od_id", "perc_comercial", "perc_residencial", "ca_medio")
+res_uso_ca
+
+```
+
+```{r}
+##Densidade de paradas de transporte público
+df_onibus <- read_xlsx("pontos_de_onibus.xlsx")
+df_trem <- read_xlsx("estacoes_trem.xlsx")
+df_metro <- read_xlsx("estacoes_metro.xlsx")
+
+df_ag_onibus <- df_onibus %>% group_by(od_id) %>% tally()
+df_ag_trem <- df_trem %>% group_by(od_id) %>% tally()
+df_ag_metro <- df_metro %>% group_by(od_id) %>% tally()
+df_mass <- full_join(df_ag_metro, df_ag_trem,by="od_id")
+
+df_mass <- df_mass %>% 
+  mutate(n.y=replace_na(df_mass$n.y,0)) %>%
+  mutate(estacoes=n.x+n.y) %>%
+  select("od_id","estacoes")
+df_transp <- full_join(df_mass,df_ag_onibus, by="od_id")
+df_transp <- left_join(df_transp, df_iptu2, by="od_id")
+df_transp <- df_transp %>% mutate(dens_onibus=n/area) %>% mutate(dens_mass=estacoes/area)
+res_transp <- df_transp %>% select("od_id", "dens_onibus", "dens_mass")
+colnames(res_transp) = c("od_id","dens_onibus", "dens_mass")
+res_transp
+
+```
+```{r}
+##Importação de dados que já estavam organizados
+res_sinistros <- read_xlsx("sinistros.xlsx")
+res_od <- read_xlsx("od.xlsx")
+res_faixas <- read_xlsx("faixas.xlsx")
+```
+
+```{r}
+##Junção das bases de dados
+res_od <- res_od %>% mutate(od_id = as.character(res_od$od_id))
+res_faixas <- res_faixas %>% mutate(od_id = as.character(res_faixas$od_id))
+
+df <- full_join(res_sinistros,res_od,by="od_id")
+df <- full_join(df, res_faixas, by="od_id")
+df <- full_join(df, res_dens_via, by="od_id")
+df <- full_join(df, res_uso_ca, by="od_id")
+df <- full_join(df, res_transp, by="od_id")
+df
+write.table(df, file = "df_meip.csv", sep = ";", na = "0", quote = FALSE, row.names = FALSE)
+
+```
+
