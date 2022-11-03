@@ -4,3 +4,5 @@ geopandas
 pygeos
 rtree
 pysal
+seaborn
+shap
