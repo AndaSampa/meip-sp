@@ -19,6 +19,14 @@ Serão utilizados dados abertos de sinistros espacializados por pontos, além da
 
 Os métodos serão descritos em processamentos independentes e publicados aqui em formato de notebooks, assim como o link para acesso aos dados, bibliotecas utilizadas e dados pré-processados.
 
+### Gerar o ambiente de desenvolvimento
+
+```
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
 ## Resultados
 
 Os resultados serao publicados a medida que forem sendo processados e analisados.
