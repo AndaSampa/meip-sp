@@ -6,3 +6,4 @@ rtree
 pysal
 seaborn
 shap
+pingouin
