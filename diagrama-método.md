@@ -7,8 +7,8 @@ graph LR
 ```mermaid
 graph LR
     A[Base de Dados] --> |Domínio dos atributos| B(36 dimensões)
-    C[LISA] --> |Domínio espacial| D(36 correlações de vizinhança)
+    C[Neighbor] --> |Domínio espacial| D(36 correlações de vizinhança)
     D --> E[[72 dimensões]]
     B --> E
-    E --> F[K-LISA-Means]
+    E --> F[K-Neighbor-Means]
 ```
